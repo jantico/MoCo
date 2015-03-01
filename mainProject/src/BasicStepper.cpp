@@ -66,6 +66,33 @@ uint64_t elapsedMicros(timespec start, timespec end) {
 
 
 
+/* writeUInt function:
+*/
+// Sends an unsigned int over the RF network
+void writeUInt(int file, unsigned int val)
+{
+    char checksum = (val/256) ^ (val&0xFF);
+    int count,num;
+    num = 0;
+    char syncVal = 0xF0;
+    char perr[80];
+
+    count = write(file, &syncVal, sizeof(syncVal));  // This gets reciever in sync with transmitter
+    if (count < 0) num = num + 1;
+    count = write(file, g_network_sig, NETWORK_SIG_SIZE);
+    if (count < 0) num = num + 2;
+    count = write(file, (unsigned char*)&val, VAL_SIZE);
+    if (count < 0) num = num + 3;
+    count = write(file, &checksum,sizeof(checksum)); //CHECKSUM_SIZE
+    if (count < 0) num = num + 4;
+    if (num > 0) {
+        sprintf(perr,"Failed to write to the output: %d \n",num);
+        perror(perr);
+    }
+}
+
+
+
 int main() {
     cout << "Starting Stepper Driver Program:" << endl;
 
@@ -121,22 +148,21 @@ int main() {
     int changePanSpeed = 0;
     int runFlag = 1;
 
-
     // pan variables
     int panSpeed;
     unsigned int uint_panSpeed;
+    char str[10];
     int sio_file;
-    if ((sio_file = open("/dev/tty4", O_RDWR | O_NOCTTY | O_NDELAY))<0) {
+    if ((sio_file = open("/dev/ttyO4", O_RDWR | O_NOCTTY | O_NDELAY))<0) {
         perror("UART: Failed to open the file.\n");
         return -1;
     }
     struct termios options;
     tcgetattr(sio_file, &options);
-    options.c_cflag = B9600 | CS8 | CLOCAL;
+    options.c_cflag = B2400 | CS8 | CLOCAL;
     options.c_iflag = IGNPAR | ICRNL;
     tcflush(sio_file, TCIFLUSH);
     tcsetattr(sio_file, TCSANOW, &options);
-    unsigned int uint_panSpeed = 0;
 
 
     int deltat = 10; // msec
@@ -161,24 +187,32 @@ int main() {
         changeStepperSpeed = 0;
         changePanSpeed = 0;
 
-        cout << "Select a command mode (1: set stepper speed, 2: set the pan speed, 3: pause/resume)\n ";
+        cout << "Select a command mode: \n";
+        cout << "   1: set stepper speed \n";
+        cout << "   2: set the pan speed \n";
+        cout << "   3: pause/resume \n";
+        cout << "   4: quit program \n";
         cin >> commandMode;
         
         switch (commandMode) 
         {
             case 1:
-                cout >> "Enter the speed (RPM): ";
+                cout << "Enter the speed (RPM): ";
                 cin >> speedIn;
                 changeStepperSpeed = 1; 
                 break;
             case 2:
-                cout >> "Enter the pan speed (RPM): ";
+                cout << "Enter the pan speed (0-255): ";
                 cin >> panSpeed;
                 changePanSpeed = 1;
                 break;
             case 3:
+                sprintf(str,"x666x");
+                write(sio_file,&str,sizeof(str)+1);
                 runFlag = !runFlag;
                 break;
+            case 4:
+                return 0;
         }
 //        cout << "Enter the desired duration (msec): ";
 //        cin >> timeIn;
@@ -198,13 +232,20 @@ int main() {
         }
 
         if (changePanSpeed) {
-            uint_panSpeed = (unsigned int) (panSpeed);
-            writeUInt(sio_file,uint_panSpeed);
+//            uint_panSpeed = (unsigned int) (panSpeed);
+//            writeUInt(sio_file,uint_panSpeed);
+            cout << "Setting pan speed:"  << panSpeed;
+            sprintf(str,"x%dx",panSpeed);
+            write(sio_file,&str,sizeof(str) + 1);
+            write(sio_file,&str,sizeof(str) + 1);
+            write(sio_file,&str,sizeof(str) + 1);
         }
 
         if (!runFlag) {
             m.sleep();
-            writeUInt(sio_file,0);
+//            writeUInt(sio_file,0);
+            sprintf(str,"x0x");
+            write(sio_file,&str,sizeof(str) + 1);
         } else {
             m.wake();
 //            writeUInt(sio_file,uint_panSpeed);
