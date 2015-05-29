@@ -6,7 +6,7 @@ written by: Jason Antico
 
 #include <glib.h>
 #include <fcntl.h>
-#include <iostream.h>
+#include <iostream>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,34 +24,7 @@ uint64_t elapsedNanos(timespec start, timespec end) {
 	return BILLION * (end.tv_sec - start.tv_sec) + end.tv_nsec - start.tv_nsec;
 }
 
-int main( int argc, char** argv )
-{
-    GMainLoop* loop = g_main_loop_new( 0, 0 );
-    int fd[6];
-    int channel[6];
-    int cond[6];
 
-    // GPIO paths (need to be updated and checked)
-    char * gpioPaths[] = {
-    	"/sys/class/gpio/gpio70/value",
-    	"/sys/class/gpio/gpio71/value",
-    	"/sys/class/gpio/gpio72/value",
-    	"/sys/class/gpio/gpio73/value",
-    	"/sys/class/gpio/gpio74/value",
-    	"/sys/class/gpio/gpio75/value"
-    }
-
-    // Loop over 6 RX Channels
-    for (int i = 0; i<6; i++) {
-    	fd[i] = open( gpioPaths[i], O_RDONLY | O_NONBLOCK );
-    	GIOChannel* channel[i] = g_io_channel_unix_new( fd );
-    	GIOCondition cond[i] = GIOCondition( G_IO_PRI );
-    	guint id = g_io_add_watch( channel, cond, calcRXInput, (gpointer) &i);
-    }
-    
-    
-    g_main_loop_run( loop );
-}
 
 static gboolean
 calcRXInput( GIOChannel *channel,
@@ -88,4 +61,33 @@ calcRXInput( GIOChannel *channel,
     
     // thank you, call again!
     return 1;
+}
+
+int main( int argc, char** argv )
+{
+    GMainLoop* loop = g_main_loop_new( 0, 0 );
+    int fd[6];
+    GIOChannel* channel[6];
+    GIOCondition cond[6];
+
+    // GPIO paths (need to be updated and checked)
+    char * gpioPaths[] = {
+    	"/sys/class/gpio/gpio70/value",
+    	"/sys/class/gpio/gpio71/value",
+    	"/sys/class/gpio/gpio72/value",
+    	"/sys/class/gpio/gpio73/value",
+    	"/sys/class/gpio/gpio74/value",
+    	"/sys/class/gpio/gpio75/value"
+    };
+
+    // Loop over 6 RX Channels
+    for (int i = 0; i<6; i++) {
+    	fd[i] = open( gpioPaths[i], O_RDONLY | O_NONBLOCK );
+    	channel[i] = g_io_channel_unix_new( fd );
+    	cond[i] = GIOCondition( G_IO_PRI );
+    	guint id = g_io_add_watch( channel, cond, calcRXInput, (gpointer) &i);
+    }
+    
+    
+    g_main_loop_run( loop );
 }
