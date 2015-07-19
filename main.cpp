@@ -19,7 +19,7 @@ By: Jason Antico
 
 // Variables
 struct RxPins {
-	memGPIO::gpioPin pin[6];
+	easyBlack::memGPIO::gpioPin pin[6];
 	unsigned char value[6];
 };
 
@@ -33,7 +33,7 @@ easyBlack::memGPIO bbbGPIO;
 enum ModeEnum {
 	manual,
 	autonomous
-}
+};
 
 // Any subfunctions
 
@@ -43,9 +43,9 @@ void setRxPins(RxPins *rx, std::string pinNum[6]) {
 	for (int i=0; i<6; i++) {
 		if (!pinNum[i].empty()) {
 			// get the pin structure
-			rx.pin[i] = bbbGPIO.getPin(pinNum[i]);
+			rx->pin[i] = bbbGPIO.getPin(pinNum[i]);
 			// Need to setup the pin still
-			bbbGPIO.pinMode(pin[i], memGPIO::INPUT);
+			bbbGPIO.pinMode(rx->pin[i], easyBlack::memGPIO::INPUT);
 		}
 	}
 }
@@ -55,8 +55,8 @@ This function will need to be updated to read
 */
 void getRxCmds(RxPins *rx) {
 	for (int i=0; i<6; i++) {
-		if (!rx.pin[i].name.empty()) {
-			rx.value[i] = bbbGPIO.digitalRead(rx.pin[i]);
+		if (!rx->pin[i].name.empty()) {
+			rx->value[i] = bbbGPIO.digitalRead(rx->pin[i]);
 		}
 	}
 }
@@ -75,7 +75,7 @@ Outputs Enum "manual" or "autonomous"
 ModeEnum getOpMode(RxPins rx) {
 	int opMode;
 	// check rx commands to get operation mode
-	return opMode;
+	return (ModeEnum)(opMode);
 }
 
 /* mapRx2PanGo
@@ -110,10 +110,10 @@ void runManualMode(RxPins *rx) {
 		// We only want to check the rx commands every so many cycles to save computation time
 		// 50 is just a 
 		if (cycleCounter > cycleReset) {
-			getRxCmds(&rx);
-			desiredCmd = mapRx2PanGo(rx);
+			getRxCmds(rx);
+			desiredCmd = mapRx2PanGo(*rx);
 			cycleCounter = 0;
-			opMode = getOpMode(rx);
+			opMode = getOpMode(*rx);
 		} else {
 			cycleCounter++;
 		}
@@ -158,8 +158,8 @@ void runAutoMode(RxPins *rx) {
 		
 		// We only want to check the rx commands every so many cycles to save computation time
 		if (cycleCounter > cycleReset) {
-			getRxCmds(&rx);
-			opMode = getOpMode(rx);
+			getRxCmds(rx);
+			opMode = getOpMode(*rx);
 		} else {
 			cycleCounter++;
 		}
@@ -189,7 +189,7 @@ int main(void) {
 	// Wait for wakeup from receiver
 	bool wakeup = false;
 	while (!wakeup) {
-		getRxCmds(rx);
+		getRxCmds(&rx);
 		for (int i=0; i<6; i++) {
 			if (!rx.pin[i].name.empty()) {
 				wakeup = true;
@@ -204,13 +204,13 @@ int main(void) {
 		// TODO: insert code to check for op mode
 
 		if (opMode == manual){
-			runManualMode(rx);
+			runManualMode(&rx);
 		} else {	// Else: autonomous mode, check for switch to manual every X cycles
-			runAutoMode(rx);
+			runAutoMode(&rx);
 		}
 	}
 
-	bbb.GPIO.~memGPIO();
+	bbbGPIO.~memGPIO();
 
 	exit(EXIT_SUCCESS);
 

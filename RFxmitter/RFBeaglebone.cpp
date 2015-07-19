@@ -58,17 +58,20 @@ void writeUInt(int file, unsigned int val)
   char checksum = (val/256) ^ (val&0xFF);
   int count,num;
   num = 0;
-  count = write(file, 0xF0, size(0xF0));  // This gets reciever in sync with transmitter
+  char syncVal = 0xF0;
+  char perr[80];
+
+  count = write(file, &syncVal, sizeof(syncVal));  // This gets reciever in sync with transmitter
   if (count < 0) num = num + 1;
   count = write(file, g_network_sig, NETWORK_SIG_SIZE);
   if (count < 0) num = num + 2;
   count = write(file, (unsigned char*)&val, VAL_SIZE);
   if (count < 0) num = num + 3;
-  count = write(file, checksum,size(checksum)); //CHECKSUM_SIZE
+  count = write(file, &checksum,sizeof(checksum)); //CHECKSUM_SIZE
   if (count < 0) num = num + 4;
-  if (num > 0) {}
-  	perror(sprintf("Failed to write to the output: %d \n",num));
-	return -1;
+  if (num > 0) {
+  	sprintf(perr,"Failed to write to the output: %d \n",num);
+  	perror(perr);
   }
 }
 
@@ -77,17 +80,15 @@ void writeUInt(int file, unsigned int val)
 
 int main(int argc, char *argv[]) {
    int file, count;
-   if(argc!=2){
-       printf("Invalid number of arguments, exiting!\n");
-       return -2;
-   }
-   if ((file = open("/dev/ttyO4", O_RDWR | O_NOCTTY | O_NDELAY))<0){
+   
+
+   if ((file = open("/dev/tty4", O_RDWR | O_NOCTTY | O_NDELAY))<0){
       perror("UART: Failed to open the file.\n");
       return -1;
    }
    struct termios options;
    tcgetattr(file, &options);
-   options.c_cflag = B1200 | CS8 | CLOCAL;
+   options.c_cflag = B9600 | CS8 | CLOCAL;
    options.c_iflag = IGNPAR | ICRNL;
    tcflush(file, TCIFLUSH);
    tcsetattr(file, TCSANOW, &options);
