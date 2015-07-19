@@ -1,0 +1,1 @@
+g++ -o rcInterrupts rcInterrupts.cpp $(pkg-config --cflags --libs glib-2.0)
