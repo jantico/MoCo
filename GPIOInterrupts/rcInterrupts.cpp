@@ -105,7 +105,7 @@ calcRXInput( GIOChannel *channel,
 	std::cout << rxChannelCmd[2] << "," << rxChannelCmd[3] << "," << rxChannelCmd[4] << ",";
         std::cout << rxChannelCmd[5] << std::endl;
 	int val = rxChannelCmd[i];
-//	write(fifo_fd[i],&val, sizeof(val));
+	write(fifo_fd[i],&val, sizeof(val));
     }
     
 
@@ -152,16 +152,26 @@ int main( int argc, char** argv )
      	std::cout << i << ",fd: " << fd[i] << std::endl;
 
 	// make our FIFO output pipes
-//	mkfifo(fifoPipes[i], 0666);
-//	fifo_fd[i] = open(fifoPipes[i],O_WRONLY);
+	int tempfifo;
+    tempfifo = mkfifo(fifoPipes[i], 0666);
+	if (tempfifo < 0) {
+        printf("Unable to create a fifo");
+        exit(-1);
+    }
+    fifo_fd[i] = open(fifoPipes[i],O_RDWR);
+    if (fifo_fd[i] < 1) {
+    printf("Error opening fifo%d",i);
+    printf("Error code: %d",fifo_fd[i]);
+    unlink(fifoPipes[i]);
+    }
     }
     
     std::cout << "Entering the loop" << std::endl;    
     g_main_loop_run( loop );
     std::cout << "Left the loop?" << std::endl;
     for (int i = 0; i<6; i++) {
-//	close(fifo_fd[i]);
-//	unlink(fifoPipes[i]);
+	close(fifo_fd[i]);
+	unlink(fifoPipes[i]);
     }
 
 }
