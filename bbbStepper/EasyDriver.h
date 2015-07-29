@@ -28,7 +28,7 @@
 #ifndef EASYDRIVER_H_
 #define EASYDRIVER_H_
 
-#include "SimpleGPIO.h"
+#include "GPIO.h"
 
 enum STEP_MODE {
 	STEP_FULL,
@@ -43,6 +43,7 @@ class EasyDriver {
 		// The GPIO pins MS1, MS2 (Microstepping options), STEP (The low->high step)
 		// SLP (Sleep - active low) and DIR (Direction)
 		int 			gpio_MS1, gpio_MS2, gpio_STEP, gpio_SLP, gpio_DIR;
+		exploringBB::GPIO 			stepGPIO, slpGPIO, dirGPIO, ms1GPIO, ms2GPIO;
 		unsigned int 	uSecDelay;
 		bool 			clockwise;
 		int 			delayFactor;  // keep constant rpm even with microstepping
@@ -69,8 +70,8 @@ class EasyDriver {
 		void setStepsPerRevolution(int steps) { stepsPerRevolution = steps; }
 		int  getStepsPerRevolution() { return stepsPerRevolution; }
 
-		void sleep()    { asleep = true;  gpio_set_value(this->gpio_SLP, LOW);  }
-		void wake()     { asleep = false; gpio_set_value(this->gpio_SLP, HIGH); }
+		void sleep()    { asleep = true;  slpGPIO.setValue(LOW);  }
+		void wake()     { asleep = false; slpGPIO.setValue(HIGH); }
 		bool isAsleep() { return asleep; }
 
 		virtual ~EasyDriver();  // unexport the gpios

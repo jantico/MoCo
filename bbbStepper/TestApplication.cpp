@@ -28,21 +28,29 @@
 #include <iostream>
 #include <string>
 #include <unistd.h>
-#include "SimpleGPIO.h"
+#include "GPIO.h"
 #include "EasyDriver.h"
-using namespace std;
 
+using namespace std;
+using namespace exploringBB;
 
 
 void stepperMotorTest(){
 
 	//Set up the mux mode correctly on the P8 Header for the following pins:
 	//Set up as output pins 0x07 (Mode 7 on all pins)
-	gpio_omap_mux_setup("gpmc_ad7", "07"); 	//gpio 39 P8pin# 4
-	gpio_omap_mux_setup("gpmc_ad10", "07"); //gpio 26 P8pin#14
-	gpio_omap_mux_setup("gpmc_ad6", "07"); 	//gpio 38 P8pin# 3
-	gpio_omap_mux_setup("gpmc_ad2", "07"); 	//gpio 34 P8pin# 5
-	gpio_omap_mux_setup("gpmc_ad12", "07"); //gpio 44 p8pin#12
+	//gpio_omap_mux_setup("gpmc_ad7", "07"); 	//gpio 39 P8pin# 4    
+	//gpio_omap_mux_setup("gpmc_ad10", "07"); //gpio 26 P8pin#14
+	//gpio_omap_mux_setup("gpmc_ad6", "07"); 	//gpio 38 P8pin# 3
+	//gpio_omap_mux_setup("gpmc_ad2", "07"); 	//gpio 34 P8pin# 5
+	//gpio_omap_mux_setup("gpmc_ad12", "07"); //gpio 44 p8pin#12
+
+    GPIO stepGPIO(34);
+    GPIO slpGPIO(26);
+    GPIO dirGPIO(44);
+
+    GPIO ms1GPIO(38);
+    GPIO ms2GPIO(39);
 
 	//gpio_MS1, gpio_MS2, gpio_STEP, gpio_SLP, gpio_DIR, rpm speed, steps per revolution
 	EasyDriver motor1(38, 39, 34, 26, 44, 60, 200); //gpio pins (last two arguments not necessary as they are the default values)
@@ -97,7 +105,7 @@ void stepperMotorTest(){
 int main(int argc, char *argv[]){
 
 	stepperMotorTest();
-	
+
 	return 0;
 }
 

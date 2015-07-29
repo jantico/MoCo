@@ -29,26 +29,27 @@
 #include <iostream>
 #include <unistd.h>
 using namespace std;
+using namespace exploringBB;
 
 EasyDriver::EasyDriver(int gpio_MS1, int gpio_MS2, int gpio_STEP, int gpio_SLP,
 					   int gpio_DIR, int speedRPM, int stepsPerRevolution){
 
-	this->gpio_MS1  = gpio_MS1;
-	this->gpio_MS2  = gpio_MS2;
-	this->gpio_STEP = gpio_STEP;
-	this->gpio_SLP  = gpio_SLP;
-	this->gpio_DIR  = gpio_DIR;
+	this->ms1GPIO  = GPIO(gpio_MS1);
+	this->ms2GPIO  = GPIO(gpio_MS2);
+	this->stepGPIO = GPIO(gpio_STEP);
+	this->slpGPIO  = GPIO(gpio_SLP);
+	this->dirGPIO  = GPIO(gpio_DIR);
 
-	gpio_export(this->gpio_MS1);
-	gpio_set_dir(this->gpio_MS1, OUTPUT_PIN);
-	gpio_export(this->gpio_MS2);
-	gpio_set_dir(this->gpio_MS2, OUTPUT_PIN);
-	gpio_export(this->gpio_STEP);
-	gpio_set_dir(this->gpio_STEP, OUTPUT_PIN);
-	gpio_export(this->gpio_SLP);
-	gpio_set_dir(this->gpio_SLP, OUTPUT_PIN);
-	gpio_export(this->gpio_DIR);
-	gpio_set_dir(this->gpio_DIR, OUTPUT_PIN);
+	//gpio_export(this->gpio_MS1);
+	this->ms1GPIO.setDirection(OUTPUT);
+	//gpio_export(this->gpio_MS2);
+	this->ms2GPIO.setDirection(OUTPUT);
+	//gpio_export(this->gpio_STEP);
+	this->stepGPIO.setDirection(OUTPUT);
+	//gpio_export(this->gpio_SLP);
+	this->slpGPIO.setDirection(OUTPUT);
+	//gpio_export(this->gpio_DIR);
+	this->dirGPIO.setDirection(OUTPUT);
 
 	// default to clockwise direction
 	clockwise = true;
@@ -66,23 +67,23 @@ void EasyDriver::setStepMode(STEP_MODE mode) {
 	this->stepMode = mode;
 	switch(stepMode){
 	case STEP_FULL:
-		gpio_set_value(this->gpio_MS1, LOW);
-		gpio_set_value(this->gpio_MS2, LOW);
+		this->ms1GPIO.setValue(LOW);
+		this->ms2GPIO.setValue(LOW);
 		this->delayFactor = 1;
 		break;
 	case STEP_HALF:
-		gpio_set_value(this->gpio_MS1, HIGH);
-		gpio_set_value(this->gpio_MS2, LOW);
+		this->ms1GPIO.setValue(HIGH);
+		this->ms2GPIO.setValue(LOW);
 		this->delayFactor = 2;
 		break;
 	case STEP_QUARTER:
-		gpio_set_value(this->gpio_MS1, LOW);
-		gpio_set_value(this->gpio_MS2, HIGH);
+		this->ms1GPIO.setValue(LOW);
+		this->ms2GPIO.setValue(HIGH);
 		this->delayFactor = 4;
 		break;
 	case STEP_EIGHT:
-		gpio_set_value(this->gpio_MS1, HIGH);
-		gpio_set_value(this->gpio_MS2, HIGH);
+		this->ms1GPIO.setValue(HIGH);
+		this->ms2GPIO.setValue(HIGH);
 		this->delayFactor = 8;
 		break;
 	}
@@ -98,20 +99,20 @@ void EasyDriver::step(int numberOfSteps){
 	cout << "Doing "<< numberOfSteps << " steps and going to sleep for " << uSecDelay/delayFactor << "uS\n";
 	int sleepDelay = uSecDelay/delayFactor;
 	if(numberOfSteps>=0) {
-		if(clockwise) gpio_set_value(this->gpio_DIR, LOW);
-		else gpio_set_value(this->gpio_DIR, HIGH);
+		if(clockwise) this->dirGPIO.setValue(LOW);
+		else this->dirGPIO.setValue(HIGH);
 		for(int i=0; i<numberOfSteps; i++){
-			gpio_set_value(this->gpio_STEP, LOW);
-			gpio_set_value(this->gpio_STEP, HIGH);
+			this->stepGPIO.setValue(LOW);
+			this->stepGPIO.setValue(HIGH);
 			usleep(sleepDelay);
 		}
 	}
 	else { // going in reverse (numberOfSteps is negative)
-		if(clockwise) gpio_set_value(this->gpio_DIR, HIGH);
-		else gpio_set_value(this->gpio_DIR, LOW);
+		if(clockwise) this->dirGPIO.setValue(HIGH);
+		else this->dirGPIO.setValue(LOW);
 		for(int i=numberOfSteps; i<=0; i++){
-			gpio_set_value(this->gpio_STEP, LOW);
-			gpio_set_value(this->gpio_STEP, HIGH);
+			this->stepGPIO.setValue(LOW);
+			this->stepGPIO.setValue(HIGH);
 			usleep(sleepDelay);
 		}
 	}
@@ -126,10 +127,10 @@ void EasyDriver::rotate(int degrees){
 }
 
 EasyDriver::~EasyDriver() {
-	gpio_unexport(this->gpio_MS1);
-	gpio_unexport(this->gpio_MS2);
-	gpio_unexport(this->gpio_STEP);
-	gpio_unexport(this->gpio_SLP);
-	gpio_unexport(this->gpio_DIR);
+	this->ms1GPIO.unexportGPIO();
+	this->ms2GPIO.unexportGPIO();
+	this->stepGPIO.unexportGPIO();
+	this->slpGPIO.unexportGPIO();
+	this->dirGPIO.unexportGPIO();
 }
 
