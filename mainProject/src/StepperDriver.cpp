@@ -1,3 +1,4 @@
+
 /* StepperDriver.cpp:
  * Program to read a stepper motor speed from a file (in steps/sec) and output through Beaglebone * GPIO interface.
  * Running as part of a separate process in order to write the pulse at as smooth of a speed as  * possible.  
@@ -6,6 +7,7 @@
 
 
 #include <iostream>
+#include <iomanip>
 #include "motor/StepperMotor.h"
 #include <time.h>
 #include <stdint.h>
@@ -14,7 +16,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
-
 
 
 // Constants for Serial transmission to Arduino
@@ -35,13 +36,13 @@ const char g_network_sig[NETWORK_SIG_SIZE] = {0x8F, 0xAA, NET_ADDR};  // Few byt
 // Other constants
 #define BILLION 1000000000L
 #define MILLION 1000000L
-
+#define FILTERLENGTH  7
 
 using namespace std;
 using namespace exploringBB;
 
 volatile sig_atomic_t flag = 0;
-void signalinterrupt(int sig){ // can be called asynchronously
+void signalInterrupt(int sig){ // can be called asynchronously
   flag = 1; // set flag
 }
 
@@ -63,9 +64,24 @@ char * fifoPipes[] = {
 	"/tmp/fifo5"
 };
 int rcChannelCmd[6];
-int rcOn[6] = {1,1,1,1,1,1};
-int forwardCh = 3;
-int panCh = 5;
+int rcChannelFilter[6][FILTERLENGTH];
+int rcOn[6] = {0,0,1,0,1,0};
+int forwardCh = 2;
+int panCh = 4;
+
+int filterRcChannel(int channel, int val, int (&array)[6][FILTERLENGTH]) {
+    int sum = 0;
+    int divisor = 1;
+    for (int i =0;i<FILTERLENGTH -1; i++){
+        array[channel][i] = array[channel][i+1];
+        sum = sum + array[channel][i+1];
+        if (array[channel][i] != 0) divisor++;
+    }
+    array[channel][FILTERLENGTH-1] = val;
+    sum = sum + val;
+    return sum/divisor;
+}
+
 
 /* writeUInt function:
 */
@@ -100,7 +116,7 @@ int main(){
 	cout << "Starting Stepper Driver Program:" << endl;
 
    // Register signals 
-	signal(SIGINT, my_function); 
+	signal(SIGINT, signalInterrupt); 
 
    // inputs
    int speedRPM = 60; // RPM
@@ -110,8 +126,8 @@ int main(){
    int pulsePerSec = stepsPerRev * speedRPM / 60; // (pulse/rev) * (rev/min) * (1 min/60 sec)
 
    // GPIO pin numbers
-   int pinMS1 = -1; // Not necessary, so disable it
-   int pinMS2 = -1; // Not necessary so disable it
+   int pinMS1 = 16; // Not necessary, so disable it
+   int pinMS2 = 16; // Not necessary so disable it
    int pinStep = 26; // P8_14 GPIO0_26
    int pinSleep = 45; // P8_11 GPIO1_13
    int pinDir = 44; // P8_12 GPIO1_12
@@ -147,7 +163,7 @@ int main(){
    if (fifo_fd < 1) {
    	printf("Error in opening /tmp/stepfifo - ");
    	printf("Error code: %d\n",fifo_fd);
-   	exit(-1);
+   	return -1;
    }
    int temp = 0;
    read(fifo_fd,&temp,sizeof(int));
@@ -155,12 +171,21 @@ int main(){
 
    speedRPM = (int) (60 * pulsePerSec / stepsPerRev);
 
+    // zero filter arrays
+    for (int i=0; i < 6; i++) {
+        for (int j=0; j< FILTERLENGTH; j++) {
+            rcChannelFilter[i][j] = 0;
+        }
+    }
+
     // read RC commands
    int rc_fd[6];
    for (int i=0; i<6;i++){
    	if (rcOn[i]) {
-   		rc_fd[i] = open(fifoPipes[i],O_RDWONLY | O_NONBLOCK);
+   		rc_fd[i] = open(fifoPipes[i],O_RDONLY | O_NONBLOCK);
    		read(rc_fd[i],&rcChannelCmd[i],sizeof(int));
+        int temp = filterRcChannel(i,rcChannelCmd[i],rcChannelFilter);
+        rcChannelCmd[i] = temp;
    	}
    }
 
@@ -184,12 +209,15 @@ int main(){
    		for (int i =0; i<6;i++){
    			if (rcOn[i]) {
    				read(rc_fd[i],&rcChannelCmd[i],sizeof(int));
+                int temp = filterRcChannel(i,rcChannelCmd[i],rcChannelFilter);
+                rcChannelCmd[i] = temp;
    			}
    		}
    		counter = 0;
 
 	   	  // get speed, scale of 1000-1500 (neg), 1500-2000 (pos)
-   		speedRPM = (rcChannelCmd[forwardCh] - 1500) / 500 * maxSpeed;
+   		speedRPM = (rcChannelCmd[forwardCh] - 1500) * maxSpeed / 500;
+        cout << "rcChannelCmd[2]: " << rcChannelCmd[2] << endl;
    		if (speedRPM < 0) {
    			m.setDirection(StepperMotor::ANTICLOCKWISE);
    			speedRPM = -1 * speedRPM;
@@ -200,16 +228,20 @@ int main(){
 
  	  	  // get pan speed
    		panSpeed = rcChannelCmd[panCh];
+        cout << "speedRPM: " << speedRPM << ", panSpeed: " << panSpeed << endl;
    		uint_panSpeed = (unsigned int) (panSpeed);
    		writeUInt(sio_file,uint_panSpeed);
 
    	} 
    	counter++;
 
-   	int numberOfSteps = speedRPM * stepsPerRev / 60 * ((int) (telapsed/BILLION));
-	threadedStepForDuration(numberOfSteps,(int) (telapsed/MILLION)); // Send in milliseconds
-
-	printf("elapsed time: %f\n",tfloat);
+   	int numberOfSteps = (int) (speedRPM * stepsPerRev / 60 * telapsed/BILLION);
+    int dt_int = (int) (telapsed/MILLION);
+    cout << "telapsed: " << telapsed << ", dt_int: " << dt_int << endl;
+    cout << "numberOfSteps: " << numberOfSteps << endl;
+	m.threadedStepForDuration(numberOfSteps,dt_int); // Send in milliseconds
+    tfloat = ((float) telapsed) / BILLION;
+//	cout << "elapsed time: " << fixed << setprecision(3) << tfloat << endl;
 	}
 
 	for (int i=0;i<6;i++) {

@@ -1,0 +1,1 @@
+g++ -g StepperDriver.cpp ../libraries/libEBBLibrary.so -o StepperDriver -I "../libraries/" -lrt
