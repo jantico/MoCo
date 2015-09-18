@@ -68,6 +68,7 @@ int rcChannelFilter[6][FILTERLENGTH];
 int rcOn[6] = {0,0,1,0,1,0};
 int forwardCh = 2;
 int panCh = 4;
+int autoCh = 5;
 
 int filterRcChannel(int channel, int val, int (&array)[6][FILTERLENGTH]) {
     int sum = 0;
@@ -200,6 +201,21 @@ int main() {
     int looptime_usec = 0.04 * 1000000; // 25 Hz (0.04 sec) -> microseconds
     int tleft_usec = 0;
     int timestepsToCmd = 1;
+    
+    // autonomous mode vars
+    bool bAutonomous = 0;
+    int autonomousSpeed = 0;
+    int autoPanSpeed = 0;
+    int autoRcThresh = 1500;
+    StepperMotor::DIRECTION autoDir = StepperMotor::CLOCKWISE;
+    long autoTime = 0;
+    long timeToPan = 5 * 60 * 1000000; // 5 min * 60 sec * 1000000 usec
+
+
+    // vars for endstops
+    bool endStop = 0;
+    StepperMotor::DIRECTION endstopDir = StepperMotor::CLOCKWISE;
+    StepperMotor::DIRECTION currentDir = StepperMotor::CLOCKWISE;
 
     while (1) {
         if (flag) {
@@ -221,20 +237,44 @@ int main() {
                 }
             }
             counter = 0;
-
-            // get speed, scale of 1000-1500 (neg), 1500-2000 (pos)
-            speedRPM = (rcChannelCmd[forwardCh] - 1500) * maxSpeed / 500;
-            cout << "rcChannelCmd[2]: " << rcChannelCmd[2] << endl;
-            if (speedRPM < 0) {
-                m.setDirection(StepperMotor::ANTICLOCKWISE);
-                speedRPM = -1 * speedRPM;
-            } else {
-                m.setDirection(StepperMotor::CLOCKWISE);
+            
+            // check for autonomous mode
+            if (rcChannelCmd[autoCh] > autoRcThresh) {
+                bAutonomous = 1;
             }
+
+            if (bAutonmous) {
+                speedRPM = autonomousSpeed;
+                m.setDirection(autoDir);
+                if (autoTime > timeToPan) {
+                    panSpeed = autoPanSpeed;
+                } else {
+                    panSpeed = 0;
+                }
+                long temp = (long) looptime_usec;
+                autoTime = autoTime + temp;
+
+            } else {
+                autoTime = 0;
+                // get speed, scale of 1000-1500 (neg), 1500-2000 (pos)
+                speedRPM = (rcChannelCmd[forwardCh] - 1500) * maxSpeed / 500;
+                cout << "rcChannelCmd[2]: " << rcChannelCmd[2] << endl;
+                if (speedRPM < 0) {
+                    currentDir = StepperMotor::ANTICLOCKWISE;
+                    m.setDirection(currentDir);
+                    speedRPM = -1 * speedRPM;
+                } else {
+                    m.setDirection(currentDir);
+                }
+                // get pan speed
+                panSpeed = rcChannelCmd[panCh];
+            }
+
+            // set stepper speed
             m.setSpeed(speedRPM);
 
-            // get pan speed
-            panSpeed = rcChannelCmd[panCh];
+
+            // write pan speed
             cout << "speedRPM: " << speedRPM << ", panSpeed: " << panSpeed << endl;
             uint_panSpeed = (unsigned int) (panSpeed);
             writeUInt(sio_file,uint_panSpeed);
@@ -246,6 +286,9 @@ int main() {
                 timeStepsToCmd = 1;
             }
             int numberOfSteps = timeStepsToCmd * speedRPM * stepsPerRev / 60 * looptime_usec/1000000;
+            if (endStop && (currentDir == endstopDir)) {
+                numberOfSteps = 0;
+            }
             m.threadedStepForDuration(numberOfSteps,(int) (looptime_usec/1000)); // Send in milliseconds
         }
 
