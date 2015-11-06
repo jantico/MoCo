@@ -1,10 +1,11 @@
-11
+
 /* StepperDriver.cpp:
  * Program to read a stepper motor speed from a file (in steps/sec) and output through Beaglebone * GPIO interface.
  * Running as part of a separate process in order to write the pulse at as smooth of a speed as  * possible.
 
  */
 
+#define __STDC_FORMAT_MACROS
 
 #include <iostream>
 #include <iomanip>
@@ -16,6 +17,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <inttypes.h>
 
 
 // Constants for Serial transmission to Arduino
@@ -55,6 +57,15 @@ uint64_t elapsedNanos(timespec start, timespec end) {
 }
 
 
+/* elapsedMicros
+Calculate time in microsecs from two timespecs
+*/
+uint64_t elapsedMicros(timespec start, timespec end) {
+    return 1000000 * (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec)/1000;
+}
+
+
+
 int main() {
     cout << "Starting Stepper Driver Program:" << endl;
 
@@ -82,6 +93,7 @@ int main() {
     struct timespec start, last, elapsed, endloop;
     clock_gettime(CLOCK_REALTIME,&start);
     last = start;
+    elapsed = last;
 
     uint64_t telapsed;
     float tfloat;
@@ -89,13 +101,23 @@ int main() {
  
     //Setup stepper motor object
     StepperMotor m(pinMS1,pinMS2,pinStep,pinSleep,pinDir,speedRPM,stepsPerRev);
+    m.sleep();
 
+    // Calculate step speed
+    clock_gettime(CLOCK_REALTIME, &start);
+    m.step();
+    clock_gettime(CLOCK_REALTIME, &elapsed);
+    telapsed = elapsedMicros(start,elapsed);
+    int elapsed_msec = (int) telapsed;
+    cout << "Step time: " << elapsed_msec << endl;
     
     // input vars
     int speedIn = 0;
     int timeIn = 0;
 
-    int deltat = 100; // msec
+    int deltat = 10; // msec
+
+    m.threadedStepAtSpeed(1); // Send in milliseconds
 
 
     while (1) {
@@ -103,18 +125,22 @@ int main() {
             break;
         }
         last = elapsed;
-        clock_gettime(CLOCK_REALTIME,&elapsed);
-        telapsed = elapsedNanos(last,elapsed);
-        tfloat = (float) (telapsed/BILLION);
-        printf("elapsed time: %f\n",tfloat);
+//        clock_gettime(CLOCK_REALTIME,&elapsed);
+//        telapsed = elapsedNanos(last,elapsed);
+//        tfloat = (float) (telapsed/BILLION);
+ //       printf("elapsed time: %f\n",tfloat);
+//        telapsed = elapsedNanos(elapsed,endloop);
+        telapsed = elapsedMicros(elapsed,endloop);
+        printf("%" PRIu64 "\n",telapsed);
+        printf("telapsed: %f \n",(double) (telapsed/1000));
 
         cout << "Enter the desired speed (rpm): ";
         cin >> speedIn;
         cout << "Enter the desired duration (msec): ";
         cin >> timeIn;
 
-        printf("Inputs: %d,%d",speedIn,timeIn);
-
+        printf("Inputs: %d,%d\n",speedIn,timeIn);
+        clock_gettime(CLOCK_REALTIME,&elapsed);
         if (speedIn < 0) {
             m.setDirection(StepperMotor::ANTICLOCKWISE);
             speedIn = -1 * speedIn;
@@ -123,17 +149,17 @@ int main() {
         }
         m.setSpeed(speedIn);
         int numberOfSteps = speedIn * stepsPerRev * timeIn / 60 / 1000;
-
-        m.threadedStepForDuration(numberOfSteps,timeIn); // Send in milliseconds
+//        printf("number of steps: %d\n",numberOfSteps);
+//        m.threadedStepForDuration(numberOfSteps,timeIn); // Send in milliseconds
         usleep((timeIn + deltat) * 1000);
 
+        printf("Speed: %d\n",speedIn);
+        usleep((timeIn + deltat) * 1000);
         clock_gettime(CLOCK_REALTIME,&endloop);
-        telapsed = elapsedNanos(elapsed,endloop);
-
     }
 
 
-    m.sleep();
+    m.wake();
 
 
 

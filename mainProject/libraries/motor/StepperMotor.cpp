@@ -206,7 +206,7 @@ void* threadedSpeed(void *value){
 	StepperMotor *stepper = static_cast<StepperMotor*>(value);
 	while(stepper->threadRunning){
 		stepper->step();
-		usleep(stepper->threadedStepPeriod * 1000);  // convert from ms to us
+		usleep(stepper->threadedStepPeriod * 1000 - 700);  // convert from ms to us (Account for approximate step time
 	}
 	return 0;
 }
