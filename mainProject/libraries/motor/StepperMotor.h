@@ -61,6 +61,7 @@ public:
    virtual void  step();
    virtual void  step(int numberOfSteps);
    virtual int   threadedStepForDuration(int numberOfSteps, int duration_ms);
+   virtual int   threadedStepAtSpeed(int speed);
    virtual void  threadedStepCancel() { this->threadRunning = false; }
    virtual void  rotate(float degrees);
    virtual void  setDirection(DIRECTION direction);
@@ -84,9 +85,12 @@ private:
    volatile int threadedStepPeriod;
    int threadedStepNumber;
    friend void* threadedStep(void *value);
+   friend void* threadedSpeed(void *value);
 };
 
 void* threadedStep(void *value);
+
+void* threadedSpeed(void *value);
 
 } /* namespace exploringBB */
 
