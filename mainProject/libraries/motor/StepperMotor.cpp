@@ -106,9 +106,11 @@ void StepperMotor::setStepMode(STEP_MODE mode) {
 }
 
 void StepperMotor::setSpeed(float rpm) {
+	if (rpm < 1) rpm =1.0; // Avoid any overflow potential
 	this->speed = rpm;
-	float delayPerSec = (60/rpm)/stepsPerRevolution;    // delay per step in seconds
-	this->uSecDelay = (int)(delayPerSec * 1000 * 1000); // in microseconds
+	float delayPerStep = (60/rpm)/stepsPerRevolution;    // delay per step in seconds
+	this->uSecDelay = (int)(delayPerStep * 1000 * 1000); // in microseconds
+	this->threadedStepPeriod =  this->uSecDelay /1000;
 }
 
 void StepperMotor::step(int numberOfSteps){
@@ -141,6 +143,17 @@ int  StepperMotor::threadedStepForDuration(int numberOfSteps, int duration_ms){
     	return -1;
     }
     pthread_detach(this->thread);
+    return 0;
+}
+
+int  StepperMotor::threadedStepAtSpeed(int speed){
+	this->setSpeed(float(speed));
+	this->threadRunning = true;
+    if(pthread_create(&this->thread, NULL, &threadedSpeed, static_cast<void*>(this))){
+    	perror("StepperMotor: Failed to create the stepping thread");
+    	this->threadRunning = false;
+    	return -1;
+    }
     return 0;
 }
 
@@ -185,6 +198,15 @@ void* threadedStep(void *value){
 		usleep(stepper->threadedStepPeriod * 1000);  // convert from ms to us
 		if(stepper->threadedStepNumber>0) stepper->threadedStepNumber--;
 		if(stepper->threadedStepNumber==0) stepper->threadRunning = false;
+	}
+	return 0;
+}
+
+void* threadedSpeed(void *value){
+	StepperMotor *stepper = static_cast<StepperMotor*>(value);
+	while(stepper->threadRunning){
+		stepper->step();
+		usleep(stepper->threadedStepPeriod * 1000);  // convert from ms to us
 	}
 	return 0;
 }

@@ -81,7 +81,8 @@ private:
    bool threadRunning;
    pthread_t thread;
    CallbackType callbackFunction;
-   int threadedStepPeriod, threadedStepNumber;
+   volatile int threadedStepPeriod;
+   int threadedStepNumber;
    friend void* threadedStep(void *value);
 };
 
