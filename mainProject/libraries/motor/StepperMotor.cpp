@@ -134,11 +134,13 @@ int  StepperMotor::threadedStepForDuration(int numberOfSteps, int duration_ms){
 	this->threadedStepNumber = numberOfSteps;
 	this->threadedStepPeriod = duration_ms/numberOfSteps;
 	this->threadRunning = true;
-    if(pthread_create(&this->thread, NULL, &threadedStep, static_cast<void*>(this))){
-    	perror("StepperMotor: Failed to create the stepping thread");
+    int pe = 0;
+    if(pe = pthread_create(&this->thread, NULL, &threadedStep, static_cast<void*>(this))){
+    	perror("StepperMotor test: Failed to create the stepping thread");
     	this->threadRunning = false;
     	return -1;
     }
+    pthread_detach(this->thread);
     return 0;
 }
 
