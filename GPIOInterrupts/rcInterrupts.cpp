@@ -57,6 +57,9 @@ char * fifoPipes[] = {
 	"/tmp/fifo5"
 };
 
+int rcOn[] = {0,1,1,0,1,0};
+
+
 int fifo_fd[6];
 
 GMainLoop* loop;
@@ -105,7 +108,8 @@ calcRXInput( GIOChannel *channel,
 	std::cout << rxChannelCmd[2] << "," << rxChannelCmd[3] << "," << rxChannelCmd[4] << ",";
         std::cout << rxChannelCmd[5] << std::endl;
 	int val = rxChannelCmd[i];
-	write(fifo_fd[i],&val, sizeof(val));
+    if (rcOn[i]) write(fifo_fd[i],&val, sizeof(val));
+//    usleep(1000);
     }
     
 
