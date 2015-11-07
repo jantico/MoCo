@@ -217,6 +217,9 @@ int main() {
     StepperMotor::DIRECTION endstopDir = StepperMotor::CLOCKWISE;
     StepperMotor::DIRECTION currentDir = StepperMotor::CLOCKWISE;
 
+	
+	m.threadedStepAtSpeed(0); // Initial speed
+
     while (1) {
         if (flag) {
             break;
@@ -289,7 +292,7 @@ int main() {
             if (endStop && (currentDir == endstopDir)) {
                 numberOfSteps = 0;
             }
-            m.threadedStepForDuration(numberOfSteps,(int) (looptime_usec/1000)); // Send in milliseconds
+            //m.threadedStepForDuration(numberOfSteps,(int) (looptime_usec/1000)); // Send in milliseconds
         }
 
         clock_gettime(CLOCK_REALTIME,&endloop);
