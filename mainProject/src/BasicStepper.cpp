@@ -113,7 +113,31 @@ int main() {
     
     // input vars
     int speedIn = 0;
+    int commandMode = 0;
     int timeIn = 0;
+
+    // flags
+    int changeStepperSpeed = 0;
+    int changePanSpeed = 0;
+    int runFlag = 1;
+
+
+    // pan variables
+    int panSpeed;
+    unsigned int uint_panSpeed;
+    int sio_file;
+    if ((sio_file = open("/dev/tty4", O_RDWR | O_NOCTTY | O_NDELAY))<0) {
+        perror("UART: Failed to open the file.\n");
+        return -1;
+    }
+    struct termios options;
+    tcgetattr(sio_file, &options);
+    options.c_cflag = B9600 | CS8 | CLOCAL;
+    options.c_iflag = IGNPAR | ICRNL;
+    tcflush(sio_file, TCIFLUSH);
+    tcsetattr(sio_file, TCSANOW, &options);
+    unsigned int uint_panSpeed = 0;
+
 
     int deltat = 10; // msec
 
@@ -134,27 +158,65 @@ int main() {
         printf("%" PRIu64 "\n",telapsed);
         printf("telapsed: %f \n",(double) (telapsed/1000));
 
-        cout << "Enter the desired speed (rpm): ";
-        cin >> speedIn;
-        cout << "Enter the desired duration (msec): ";
-        cin >> timeIn;
+        changeStepperSpeed = 0;
+        changePanSpeed = 0;
 
-        printf("Inputs: %d,%d\n",speedIn,timeIn);
-        clock_gettime(CLOCK_REALTIME,&elapsed);
-        if (speedIn < 0) {
-            m.setDirection(StepperMotor::ANTICLOCKWISE);
-            speedIn = -1 * speedIn;
-        } else {
-            m.setDirection(StepperMotor::CLOCKWISE);
+        cout << "Select a command mode (1: set stepper speed, 2: set the pan speed, 3: pause/resume)\n ";
+        cin >> commandMode;
+        
+        switch (commandMode) 
+        {
+            case 1:
+                cout >> "Enter the speed (RPM): ";
+                cin >> speedIn;
+                changeStepperSpeed = 1; 
+                break;
+            case 2:
+                cout >> "Enter the pan speed (RPM): ";
+                cin >> panSpeed;
+                changePanSpeed = 1;
+                break;
+            case 3:
+                runFlag = !runFlag;
+                break;
         }
-        m.setSpeed(speedIn);
-        int numberOfSteps = speedIn * stepsPerRev * timeIn / 60 / 1000;
+//        cout << "Enter the desired duration (msec): ";
+//        cin >> timeIn;
+
+//        printf("Inputs: %d,%d\n",speedIn,timeIn);
+ 
+        // Stepper speed requested
+        if (changeStepperSpeed) {
+            clock_gettime(CLOCK_REALTIME,&elapsed);
+            if (speedIn < 0) {
+                m.setDirection(StepperMotor::ANTICLOCKWISE);
+                speedIn = -1 * speedIn;
+            } else {
+                m.setDirection(StepperMotor::CLOCKWISE);
+            }
+            m.setSpeed(speedIn);           
+        }
+
+        if (changePanSpeed) {
+            uint_panSpeed = (unsigned int) (panSpeed);
+            writeUInt(sio_file,uint_panSpeed);
+        }
+
+        if (!runFlag) {
+            m.sleep();
+            writeUInt(sio_file,0);
+        } else {
+            m.wake();
+//            writeUInt(sio_file,uint_panSpeed);
+        }
+
+//        int numberOfSteps = speedIn * stepsPerRev * timeIn / 60 / 1000;
 //        printf("number of steps: %d\n",numberOfSteps);
 //        m.threadedStepForDuration(numberOfSteps,timeIn); // Send in milliseconds
-        usleep((timeIn + deltat) * 1000);
+//        usleep((timeIn + deltat) * 1000);
 
-        printf("Speed: %d\n",speedIn);
-        usleep((timeIn + deltat) * 1000);
+//        printf("Speed: %d\n",speedIn);
+        usleep(3000000); // Sleep 3 seconds
         clock_gettime(CLOCK_REALTIME,&endloop);
     }
 
