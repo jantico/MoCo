@@ -106,11 +106,18 @@ void StepperMotor::setStepMode(STEP_MODE mode) {
 }
 
 void StepperMotor::setSpeed(float rpm) {
-	if (rpm < 1) rpm =1.0; // Avoid any overflow potential
+	int overflowCheck = 0;
+	if (rpm < 1) { // Avoid any overflow potential
+		this->threadedStepPeriod = 32000; // max delay
+		rpm = 1;
+		overflowCheck = 1;
+	} 
 	this->speed = rpm;
 	float delayPerStep = (60/rpm)/stepsPerRevolution;    // delay per step in seconds
 	this->uSecDelay = (int)(delayPerStep * 1000 * 1000); // in microseconds
-	this->threadedStepPeriod =  this->uSecDelay /1000;
+	if (!overflowCheck) {
+		this->threadedStepPeriod =  this->uSecDelay /1000;
+	}
 }
 
 void StepperMotor::step(int numberOfSteps){
@@ -149,6 +156,7 @@ int  StepperMotor::threadedStepForDuration(int numberOfSteps, int duration_ms){
 int  StepperMotor::threadedStepAtSpeed(int speed){
 	this->setSpeed(float(speed));
 	this->threadRunning = true;
+    printf("Starting thread\n");
     if(pthread_create(&this->thread, NULL, &threadedSpeed, static_cast<void*>(this))){
     	perror("StepperMotor: Failed to create the stepping thread");
     	this->threadRunning = false;

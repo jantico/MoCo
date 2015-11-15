@@ -142,7 +142,8 @@ int main() {
 
     // inputs
     int speedRPM = 100; // RPM
-    int maxSpeed = 100;
+    int lastSpeed;
+    int maxSpeed = 15;
     int stepsPerRev = 200 * 10; // 200 steps per revolution * 10 microsteps/step
     int dir = 1; // Clockwise
     int pulsePerSec = stepsPerRev * speedRPM / 60; // (pulse/rev) * (rev/min) * (1 min/60 sec)
@@ -226,7 +227,7 @@ int main() {
 
 
     // Loop upkeep vars
-    int looptime_usec = 0.04 * 1000000; // 25 Hz (0.04 sec) -> microseconds
+    long int looptime_usec = 0.04 * 1000000; // 25 Hz (0.04 sec) -> microseconds
     int tleft_usec = 0;
     int timeStepsToCmd = 1;
     
@@ -246,6 +247,9 @@ int main() {
     StepperMotor::DIRECTION currentDir = StepperMotor::CLOCKWISE;
     m.sleep();
 
+	
+	m.threadedStepAtSpeed(1); // Initial speed
+
     while (1) {
         if (flag) {
             break;
@@ -260,14 +264,14 @@ int main() {
 
         if (counter % checkForRCcount == 0) {
             // check for RC signals
-/*            for (int i =0; i<6; i++) {
+            for (int i =0; i<6; i++) {
                 if (rcOn[i]) {
                     read(rc_fd[i],&rcChannelCmd[i],sizeof(int));
                     int temp = filterRcChannel(i,rcChannelCmd[i],rcChannelFilter);
                     rcChannelCmd[i] = temp;
                 }
             }
-*/
+
             readOffRcCmds(rc_fd);
             counter = 0;
             
@@ -292,6 +296,7 @@ int main() {
             } else {
                 autoTime = 0;
                 // get speed, scale of 1000-1500 (neg), 1500-2000 (pos)
+                lastSpeed = speedRPM;
                 speedRPM = (rcChannelCmd[forwardCh] - 1500) * maxSpeed / 500;
                 cout << "rcChannelCmd[2]: " << rcChannelCmd[forwardCh] << endl;
                 if (speedRPM < 0) {
@@ -308,7 +313,11 @@ int main() {
             }
 
             // set stepper speed
-            m.setSpeed(speedRPM);
+            
+            if (abs(lastSpeed - speedRPM) > 5) {
+//                m.setSpeed(speedRPM);
+                printf("set speed: %d\n",speedRPM);
+            }
 
 
             // write pan speed
@@ -336,10 +345,11 @@ int main() {
                 numberOfSteps = 0;
             }
 
-            printf("Starting thread for %d steps, %d millisec \n",numberOfSteps,(int) (looptime_usec/1000));
-            if (numberOfSteps > 0) 
-            m.threadedStepForDuration(numberOfSteps,(int) (timeStepsToCmd*looptime_usec/1000)); // Send in milliseconds
+//            printf("Starting thread for %d steps, %d millisec \n",numberOfSteps,(int) (looptime_usec/1000));
+//            if (numberOfSteps > 0) 
+//            m.threadedStepForDuration(numberOfSteps,(int) (timeStepsToCmd*looptime_usec/1000)); // Send in milliseconds
 //            cout << "Made it out of the thread" << endl;
+            //m.threadedStepForDuration(numberOfSteps,(int) (looptime_usec/1000)); // Send in milliseconds
         }
 
         clock_gettime(CLOCK_REALTIME,&endloop);
