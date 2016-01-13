@@ -147,6 +147,7 @@ int main() {
     int changeStepperSpeed = 0;
     int changePanSpeed = 0;
     int runFlag = 1;
+    int stopPan = 0;
 
     // pan variables
     int panSpeed;
@@ -190,9 +191,10 @@ int main() {
         cout << "Select a command mode: \n";
         cout << "   1: set stepper speed \n";
         cout << "   2: set the pan speed \n";
-        cout << "   3: pause/resume \n";
-        cout << "   4: quit program \n";
-        cin >> commandMode;
+        cout << "   3: pause/resume stepper \n";
+        cout << "   4: pause/resume pan \n";
+        cout << "   5: quit program \n";
+       cin >> commandMode;
         
         switch (commandMode) 
         {
@@ -207,11 +209,15 @@ int main() {
                 changePanSpeed = 1;
                 break;
             case 3:
-                sprintf(str,"x666x");
-                write(sio_file,&str,sizeof(str)+1);
+                //sprintf(str,"x666x");
+                //write(sio_file,&str,sizeof(str)+1);
                 runFlag = !runFlag;
                 break;
             case 4:
+                sprintf(str,"x666x");
+                write(sio_file,&str,sizeof(str)+1);
+                stopPan = !stopPan;
+            case 5:
                 return 0;
         }
 //        cout << "Enter the desired duration (msec): ";

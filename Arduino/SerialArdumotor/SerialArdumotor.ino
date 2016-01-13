@@ -27,6 +27,8 @@ void setup() {
 void loop() {
    byte charIn;
    int desiredSpeed = 0;
+//   Serial.print("Looping...");
+//   Serial.println();
    if (Serial.available()) {
      desiredSpeed = Serial.parseInt();
      if (desiredSpeed == 666) {
@@ -101,7 +103,7 @@ void stopped() //stop
 { 
   digitalWrite(dir_a, LOW); //Set motor direction, 1 low, 2 high
   digitalWrite(dir_b, LOW); //Set motor direction, 3 high, 4 low
-  analogWrite(pwm_a, 0);    //set both motors to run at 100% duty cycle (fast)
+  analogWrite(pwm_a, 0);    //set both motors to run at 0% duty cycle (fast)
   analogWrite(pwm_b, 0); 
 }
 
@@ -177,10 +179,10 @@ void continueSpeed(int spd) //full speed backward
 
 void astop()                   //stop motor A
 {
-  analogWrite(pwm_a, 0);    //set both motors to run at 100% duty cycle (fast)
+  analogWrite(pwm_a, 0);    //set both motors to run at 0% duty cycle (fast)
 }
 
 void bstop()                   //stop motor B
 { 
-  analogWrite(pwm_b, 0);    //set both motors to run at 100% duty cycle (fast)
+  analogWrite(pwm_b, 0);    //set both motors to run at 0% duty cycle (fast)
 }
