@@ -31,6 +31,9 @@ void loop() {
 //   Serial.println();
    if (Serial.available()) {
      desiredSpeed = Serial.parseInt();
+     Serial.print("Val: ");
+     Serial.print(desiredSpeed);
+     Serial.println();
      if (desiredSpeed == 666) {
         stopChecking = !stopChecking;
         Serial.print("Received stop signal");

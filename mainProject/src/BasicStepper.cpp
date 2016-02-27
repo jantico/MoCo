@@ -217,6 +217,7 @@ int main() {
                 sprintf(str,"x666x");
                 write(sio_file,&str,sizeof(str)+1);
                 stopPan = !stopPan;
+                break;
             case 5:
                 return 0;
         }
